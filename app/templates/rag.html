@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>watsonx INCUBATION | IBM Indonesia</title>
+    <!--link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"-->
+    <link rel="icon" type="image/x-icon" href="https://cdn.iconscout.com/icon/free/png-256/free-bee-189-439428.png?f=webp">
+    <link rel="stylesheet" href="https://1.www.s81c.com/common/carbon/plex/sans.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: IBM Plex Sans,Helvetica Neue,Arial,sans-serif;
+      }
+
+      .search-wd,
+      .rag-qna{
+        display: none;
+        margin: 5%;
+        margin-left: 20%;
+        width: 70%; 
+      }
+
+      .loading-container-rag {
+        position: relative;
+        padding: 1rem;
+        display: flex;
+        align-items: left;
+        justify-content: left;
+        width: 50%;
+      }
+
+      
+    </style>
+    
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/ui-shell.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/tile.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/slug.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/combo-box.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/accordion.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.10.0/button.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.10.0/loading.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/file-uploader.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/textarea.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/progress-bar.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/inline-loading.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/toggle.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/select.min.js"></script>
+    <!-- <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/search.min.js"></script>
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/tag/v2/latest/search.min.js"></script> -->
+    <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.10.0/tag.min.js"></script>
+    
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          //var related to side tabs navigator
+            const ragQNA = document.querySelector('.rag-qna');
+            const ragLink = document.querySelector('cds-side-nav-link:nth-child(1)');
+
+          //var related to pdf-json
+
+
+          //var related to QnA Rag
+            const submitButton = document.querySelector('.submit-button');
+            const clearButton = document.querySelector('.clear-button');
+            const chatbox = document.querySelector('cds-textarea');
+            const submittedTextContainer = document.querySelector('.submitted-text');
+            const loadingContainerRAG = document.querySelector('.loading-container-rag');
+            const toggleStream = document.querySelector('.toggle-stream');
+            let useStreamingEndpoint = false;
+
+
+            //eventListener related to side tabs navigator
+            ragLink.addEventListener('click', function() {
+              ragQNA.style.display = 'block';
+            });
+
+            //event listener fraud-search
+
+
+            //eventListener related to QnA Contract
+            // Function to render a chart
+            function renderChart(data, xKey, yKey) {
+                const chartContainer = document.createElement('div');
+                chartContainer.classList.add('chart-container');
+                
+                const chartTitle = document.createElement('h3');
+                chartTitle.textContent = `Chart: ${xKey} vs ${yKey}`;
+                chartContainer.appendChild(chartTitle);
+
+                const chart = document.createElement('canvas');
+                chart.id = 'chartCanvas';
+                chartContainer.appendChild(chart);
+                
+                submittedTextContainer.appendChild(chartContainer);
+
+                const chartData = {
+                    labels: data.map(item => item[xKey]),
+                    datasets: [{
+                        label: yKey,
+                        data: data.map(item => item[yKey]),
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                };
+
+                new Chart(chart, {
+                    type: 'line',//'bar',
+                    data: chartData,
+                    options: {
+                        scales: {
+                            x: { beginAtZero: true },
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Function to render a table
+            function renderTable(data) {
+                const table = document.createElement('table');
+                table.classList.add('data-table');
+
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+
+                // Get column names from the first object in data array
+                const columns = Object.keys(data[0]);
+                columns.forEach(column => {
+                    const th = document.createElement('th');
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    columns.forEach(column => {
+                        const td = document.createElement('td');
+                        td.textContent = item[column];
+                        row.appendChild(td);
+                    });
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                submittedTextContainer.appendChild(table);
+            }
+
+            // EventListener related to QnA Contract
+            submitButton.addEventListener('click', function() {
+                const submittedText = chatbox.value.trim();
+                if (submittedText !== '') {
+                    loadingContainerRAG.style.display = 'block'; // Show loading spinner
+                    const submittedTextElement = document.createElement('p');
+                    submittedTextElement.textContent = 'Question: ' + submittedText;
+                    submittedTextContainer.appendChild(submittedTextElement);
+                    chatbox.value = ''; // Clearing the chatbox after submission
+
+                    const endpoint = useStreamingEndpoint ? '/qna_wx_stream' : '/qna_wx';
+                    console.log(endpoint);
+
+                    // First fetch request to /get_data
+                    fetch('/get_data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ user_question: submittedText })
+                    })
+                    .then(response => response.json())
+                    .then(getDataResponse => {
+                        console.log('Response from /get_data:', getDataResponse);
+                        console.log('Chart', getDataResponse.visual.chart)
+
+                        // Check if we need to render a chart or a table
+                        const { output, visual } = getDataResponse;
+                        if (visual.chart === 'True') {
+                            renderChart(output, visual.x, visual.y);
+                        } else {
+                            renderTable(output);
+                        }
+
+                        // Second fetch request to /qna_wx_stream or /qna_wx with additional data from /get_data
+                        return fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(getDataResponse)
+                        });
+                    })
+                    .then(response => {
+                        if (useStreamingEndpoint) {
+                            const reader = response.body.getReader();
+                            let result = ''; 
+                        
+                            let answerTextElementStream = submittedTextContainer.querySelector('.answer-text-stream');
+                        
+                            answerTextElementStream = document.createElement('p');
+                            answerTextElementStream.classList.add('answer-text-stream');
+                            submittedTextContainer.appendChild(answerTextElementStream);
+                          
+                            reader.read().then(function processText({ done, value }) {
+                                if (done) {
+                                    loadingContainerRAG.style.display = 'none';
+                                    return;
+                                }
+                                const chunk = new TextDecoder('utf-8').decode(value);
+                                
+                                result += chunk;
+                                answerTextElementStream.textContent = `Answer: ${result}`;
+                                
+                                submittedTextContainer.scrollTop = submittedTextContainer.scrollHeight;
+                                reader.read().then(processText);
+                            });
+                        } else {
+                            return response.json();
+                        }
+                    })
+                    .then(data => {
+                        if (!useStreamingEndpoint) {
+                            const answer = data.answer;
+                            const etaRetrieve = parseFloat(data.eta_retrieve).toFixed(1);
+                            const etaWatsonX = parseFloat(data.eta_wxai).toFixed(1);
+
+                            const answerTextElement = document.createElement('p');
+                            answerTextElement.textContent = `Answer: ${answer}`;
+                            answerTextElement.classList.add('answer-text'); // Add a class for identification
+
+                            const additionalInfoElement = document.createElement('p');
+                            additionalInfoElement.innerHTML = `<span style="font-size: smaller; font-style: italic; display: block;">(Watson Discovery took ${etaRetrieve} sec to retrieve information, WatsonX.AI took ${etaWatsonX} sec to generate the answer)</span>`;
+
+                            submittedTextContainer.appendChild(answerTextElement);
+                            submittedTextContainer.appendChild(additionalInfoElement);
+                        }
+                        loadingContainerRAG.style.display = 'none'; // Hide loading spinner after receiving response
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            });
+
+
+            clearButton.addEventListener('click', function() {
+                // Remove all child elements from the container
+                while (submittedTextContainer.firstChild) {
+                    submittedTextContainer.removeChild(submittedTextContainer.firstChild);
+                }
+            });
+
+            toggleStream.addEventListener('cds-toggle-changed', function(event) {
+                useStreamingEndpoint = event.target.checked; // Update the endpoint based on toggle state
+            });
+
+            // Event listener for the search button
+        
+
+        });
+
+        </script>
+
+
+</head>
+<body>
+  <!-- NAVBAR MENU -->
+    <cds-header aria-label="IBM Platform Name">
+        <cds-header-menu-button
+          button-label-active="Close menu"
+          button-label-inactive="Open menu"></cds-header-menu-button>
+        <cds-header-name href="/" prefix="IBM">watson<span style="color:#0f62fe;">x</span></cds-header-name>
+        <cds-header-nav menu-bar-label="IBM [Platform]">
+          <cds-header-nav-item href="/rag">Q&A</cds-header-nav-item>
+        </cds-header-nav>
+    </cds-header>
+
+    
+    <!--SIDE NAVIGATION-->
+      <cds-side-nav aria-label="Side navigation" expanded>
+        <cds-side-nav-items>
+          <cds-side-nav-link href="javascript:void(0)">Forecasting</cds-side-nav-link>
+        </cds-side-nav-items>
+    </cds-side-nav>
+
+
+
+     <!--HTML element to QnA RAG-->
+     <div class="rag-qna">
+      <h2>Making a prediction using PatchTST</h2>
+      <cds-tile class="submitted-text" ></cds-tile>
+      <cds-progress-bar class="loading-container-rag" style="display: none;"
+        label="Wait for a moment..."
+        helper-text="Getting watsonx.ai to answer your question"
+        status="active"></cds-progress-bar>
+
+        <cds-toggle class="toggle-stream"
+        size="sm"
+        label-a="On"
+        label-text="Activate Streaming"
+        label-b="Off"></cds-toggle>
+      <cds-textarea placeholder="Chatbox" rows="5" cols="70">
+        <span slot="label-text">Please put your question here</span>
+        <span slot="helper-text">Powered by watsonx.ai</span>
+        <span slot="validity-message">Something isn't right</span>
+      </cds-textarea>
+      <cds-button-set>
+        <cds-button class="submit-button" href="#"> Submit </cds-button>
+        <cds-button class="clear-button" href="#"> Clear </cds-button>
+      </cds-button-set>
+
+    </div>
+
+
+    <!--HTML element to upload file to Watson Discovery-->
+    <div class="search-wd"> 
+    </div>
+
+
+   
+    
+
+    
+</body>
+</html>
